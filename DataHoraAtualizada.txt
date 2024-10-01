@@ -1,0 +1,12 @@
+let
+    // Data e hora local ajustada para o fuso horário UTC-3
+    Origem = DateTimeZone.SwitchZone(DateTimeZone.LocalNow(), -3, 0),
+    
+    // Converte em uma tabela
+    Tabela = #table(
+        {"DataHoraLocal"}, // Nome da coluna
+        {{Origem}}         // Valor da coluna
+    ),
+    #"Tipo Alterado" = Table.TransformColumnTypes(Tabela,{{"DataHoraLocal", type datetimezone}})
+in
+    #"Tipo Alterado"
