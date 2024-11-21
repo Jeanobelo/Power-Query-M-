@@ -1,0 +1,39 @@
+let
+
+    datainicio = #date(2017, 1, 1),
+    datafim = #date(Date.Year(DateTimeZone.SwitchZone(DateTimeZone.LocalNow(),-3,0)) + 1,12,31),
+    anoatual = Date.Year(DateTimeZone.SwitchZone(DateTimeZone.LocalNow(),-3,0)),
+    mesatual = Text.Start(Text.Proper( Date.MonthName(DateTimeZone.SwitchZone(DateTimeZone.LocalNow(),-3,0))),3),
+    mesatualNum = Date.Month(DateTimeZone.SwitchZone(DateTimeZone.LocalNow(),-3,0)),
+    diaatual = Date.Day(DateTimeZone.SwitchZone(DateTimeZone.LocalNow(),-3,0)),
+
+    duracao = Number.From(datafim - datainicio),
+
+    Listadedatas = List.Dates(datainicio, duracao + 1 , #duration(1, 0, 0, 0)),
+
+    #"Convertido para Tabela" = Table.FromList(Listadedatas, Splitter.SplitByNothing(), null, null, ExtraValues.Error),
+    #"Colunas Renomeadas" = Table.RenameColumns(#"Convertido para Tabela",{{"Column1", "Data"}}),
+    #"Ano Inserido" = Table.AddColumn(#"Colunas Renomeadas", "Ano", each Date.Year([Data]), Int64.Type),
+    #"Mês Inserido" = Table.AddColumn(#"Ano Inserido", "Mês", each Date.Month([Data]), Int64.Type),
+    #"Nome do Mês Inserido" = Table.AddColumn(#"Mês Inserido", "Nome do Mês", each Date.MonthName([Data]), type text),
+    #"Dia Inserido" = Table.AddColumn(#"Nome do Mês Inserido", "Dia", each Date.Day([Data]), Int64.Type),
+    #"Colocar Cada Palavra Em Maiúscula" = Table.TransformColumns(#"Dia Inserido",{{"Nome do Mês", Text.Proper, type text}}),
+    #"Colunas Reordenadas" = Table.ReorderColumns(#"Colocar Cada Palavra Em Maiúscula",{"Data", "Dia", "Ano", "Mês", "Nome do Mês"}),
+    #"Primeiros caracteres extraídos" = Table.TransformColumns(#"Colunas Reordenadas", {{"Nome do Mês", each Text.Start(_, 3), type text}}),
+    #"Coluna Mesclada Inserida1" = Table.AddColumn(#"Primeiros caracteres extraídos", "Ano e Mês", each Text.Combine({Text.From([Ano], "pt-BR"), [Nome do Mês]}, " / "), type text),
+    #"Personalização Adicionada" = Table.AddColumn(#"Coluna Mesclada Inserida1", "Class_Ano e Mês", each [Ano] * 100 + [Mês]),
+    #"Tipo Alterado" = Table.TransformColumnTypes(#"Personalização Adicionada",{{"Data", type date}, {"Class_Ano e Mês", Int64.Type}}),
+
+#"Coluna Condicional Adicionada" = 
+    Table.AddColumn(#"Tipo Alterado", "Filtro Para o Mês Atual", 
+        each if [Ano e Mês] = Text.Combine({Text.From(anoatual, "pt-BR"),mesatual}, " / ")
+            then "Mês Atual" 
+            else "Outro Mês"),
+    #"Tipo Alterado1" = Table.TransformColumnTypes(#"Coluna Condicional Adicionada",{{"Filtro Para o Mês Atual", type text}}),
+
+    #"Coluna Condicional Adicionada1" = Table.AddColumn(#"Tipo Alterado1", "Filtro Para o Dia Atual",
+         each 
+            if [Data] = #date(anoatual, mesatualNum,diaatual) then "Hoje" else "Outro Dia"),
+    #"Tipo Alterado2" = Table.TransformColumnTypes(#"Coluna Condicional Adicionada1",{{"Filtro Para o Dia Atual", type text}})
+in
+    #"Tipo Alterado2"
